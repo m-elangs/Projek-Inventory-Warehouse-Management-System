@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-canvas: #F7F8FA;
+    --bg-surface: #FFFFFF;
+    --text-primary: #171A21;
+    --text-secondary: #667085;
+    --border-subtle: #E6E8EC;
+    --accent-primary: #334E85;
+    --status-success: #16845B;
+    --status-warning: #B7791F;
+    --status-danger: #C2413B;
+  }
+
+  html {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #171A21;
+    background-color: #F7F8FA;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: #F7F8FA;
+    color: #171A21;
+  }
+
+  select,
+  select option,
+  select optgroup {
+    font-size: 16px !important;
+    font-weight: 500 !important;
+    line-height: 1.5 !important;
+    color: #171A21 !important;
+    background-color: #FFFFFF !important;
+    padding: 8px 12px !important;
+  }
+}
+
+@layer utilities {
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Clean enterprise scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D0D5DD;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #98A2B3;
+}

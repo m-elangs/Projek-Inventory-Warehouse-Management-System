@@ -1,0 +1,25 @@
+<?php
+
+namespace App\Http\Middleware;
+
+use Closure;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
+
+class CheckPermission
+{
+    public function handle(Request $request, Closure $next, string ...$permissions): Response
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->hasAnyPermission($permissions)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You lack the required permission to access this resource.',
+                'errors' => (object) [],
+            ], 403);
+        }
+
+        return $next($request);
+    }
+}

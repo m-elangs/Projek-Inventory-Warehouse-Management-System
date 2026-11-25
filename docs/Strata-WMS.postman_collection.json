@@ -1,0 +1,94 @@
+{
+  "info": {
+    "name": "Strata WMS — Enterprise REST API v1",
+    "description": "Postman API testing collection for Strata WMS authentication, inventory ledger, procurement, transfers, adjustments, and analytics.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://127.0.0.1:8000/api/v1" },
+    { "key": "token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Auth — Sign In (Admin)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const json = pm.response.json();",
+              "if (json.data && json.data.token) { pm.collectionVariables.set('token', json.data.token); }",
+              "pm.test('Login succeeded', () => pm.response.to.have.status(200));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"admin@stratawms.io\",\n  \"password\": \"Password123!\",\n  \"device_name\": \"postman\"\n}"
+        }
+      }
+    },
+    {
+      "name": "2. Dashboard — Executive Summary",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/dashboard?days=14"
+      }
+    },
+    {
+      "name": "3. Inventory — Real-Time Stock Matrix",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/inventory?per_page=20"
+      }
+    },
+    {
+      "name": "4. Inventory — Record Direct Stock In",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Idempotency-Key", "value": "{{$guid}}" }
+        ],
+        "url": "{{baseUrl}}/inventory/stock-in",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"warehouse_id\": 1,\n  \"transaction_date\": \"2026-11-25\",\n  \"notes\": \"Postman inbound test\",\n  \"items\": [\n    { \"product_id\": 1, \"quantity\": 5, \"unit_cost\": 640.00 }\n  ]\n}"
+        }
+      }
+    },
+    {
+      "name": "5. Inventory — Record Stock Out",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Idempotency-Key", "value": "{{$guid}}" }
+        ],
+        "url": "{{baseUrl}}/inventory/stock-out",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"warehouse_id\": 1,\n  \"transaction_date\": \"2026-11-25\",\n  \"destination\": \"Enterprise Client Dispatch\",\n  \"items\": [\n    { \"product_id\": 1, \"quantity\": 2 }\n  ]\n}"
+        }
+      }
+    },
+    {
+      "name": "6. Reports — Inventory Valuation",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/reports/inventory"
+      }
+    }
+  ]
+}

@@ -1,0 +1,207 @@
+openapi: 3.0.3
+info:
+  title: Strata WMS — Enterprise Inventory & Warehouse Management API
+  version: 1.0.0
+  description: >
+    Versioned REST API (`/api/v1`) for Strata WMS. Protected endpoints require a Laravel Sanctum Bearer token
+    and support `X-Idempotency-Key` headers on state-mutating requests to prevent duplicate ledger transactions.
+servers:
+  - url: http://127.0.0.1:8000/api/v1
+    description: Local Development Server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: SanctumToken
+  parameters:
+    IdempotencyKey:
+      name: X-Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
+        maxLength: 100
+      description: Unique UUID per logical operation to guarantee idempotent execution.
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      summary: Service health probe
+      security: []
+      responses:
+        '200':
+          description: API operational
+
+  /auth/login:
+    post:
+      summary: Authenticate employee and issue Sanctum token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email, example: admin@stratawms.io }
+                password: { type: string, example: Password123! }
+                device_name: { type: string, example: postman-client }
+      responses:
+        '200': { description: Token and serialized user profile with permissions and warehouses }
+        '401': { description: Invalid credentials }
+        '403': { description: Account deactivated }
+
+  /auth/me:
+    get:
+      summary: Fetch current authenticated operator profile
+      responses:
+        '200': { description: Operator profile, role, permissions, and accessible warehouses }
+
+  /auth/logout:
+    post:
+      summary: Revoke current Sanctum access token
+      responses:
+        '200': { description: Signed out }
+
+  /dashboard:
+    get:
+      summary: Executive KPIs, movement trends, valuation trajectory, warehouse distribution, and alerts
+      parameters:
+        - name: warehouse_id
+          in: query
+          schema: { type: integer }
+        - name: days
+          in: query
+          schema: { type: integer, default: 14 }
+      responses:
+        '200': { description: Dashboard analytics payload }
+
+  /inventory:
+    get:
+      summary: Paginated real-time stock matrix across warehouses and bin locations
+      parameters:
+        - { name: warehouse_id, in: query, schema: { type: integer } }
+        - { name: category_id, in: query, schema: { type: integer } }
+        - { name: stock_status, in: query, schema: { type: string, enum: [healthy, low_stock, out_of_stock] } }
+        - { name: search, in: query, schema: { type: string } }
+        - { name: page, in: query, schema: { type: integer } }
+      responses:
+        '200': { description: Paginated inventory stock slots }
+
+  /inventory/stock-in:
+    post:
+      summary: Record Direct Stock In receipt and append stock movements
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201': { description: Goods receipt created and inventory incremented }
+        '422': { description: Validation error }
+
+  /inventory/stock-out:
+    post:
+      summary: Record Stock Out dispatch with row-locked negative stock prevention
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201': { description: Outbound movement posted }
+        '422': { description: Insufficient available stock }
+
+  /inventory/movements:
+    get:
+      summary: Query immutable stock movements audit ledger
+      responses:
+        '200': { description: Paginated stock movements }
+
+  /products:
+    get:
+      summary: List or search master product catalog
+      responses:
+        '200': { description: Paginated or full product catalog }
+    post:
+      summary: Create new SKU
+      responses:
+        '201': { description: Product created }
+
+  /warehouses:
+    get:
+      summary: List accessible warehouses with total units and valuation
+      responses:
+        '200': { description: Warehouses collection }
+    post:
+      summary: Create warehouse with default receiving & storage bins
+      responses:
+        '201': { description: Warehouse created }
+
+  /purchase-orders:
+    get:
+      summary: List purchase orders with receiving progress
+      responses:
+        '200': { description: Paginated purchase orders }
+    post:
+      summary: Create draft or approved multi-line purchase order
+      responses:
+        '201': { description: Purchase order created }
+
+  /purchase-orders/{purchaseOrder}/receive:
+    post:
+      summary: Post partial or full Goods Receipt against an approved Purchase Order
+      parameters:
+        - { name: purchaseOrder, in: path, required: true, schema: { type: integer } }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201': { description: Goods receipt posted and PO status updated }
+        '422': { description: Exceeds remaining receivable quantity }
+
+  /stock-transfers:
+    get:
+      summary: List inter-warehouse stock transfers
+      responses:
+        '200': { description: Paginated stock transfers }
+    post:
+      summary: Create stock transfer and reserve source stock
+      responses:
+        '201': { description: Transfer created }
+
+  /stock-transfers/{stockTransfer}/complete:
+    post:
+      summary: Atomically deduct source stock, release reservation, and credit destination warehouse
+      parameters:
+        - { name: stockTransfer, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200': { description: Transfer completed }
+
+  /stock-adjustments:
+    get:
+      summary: List stock adjustment requests
+      responses:
+        '200': { description: Paginated stock adjustments }
+    post:
+      summary: Submit physical cycle count or write-off adjustment
+      responses:
+        '201': { description: Adjustment submitted }
+
+  /stock-adjustments/{stockAdjustment}/approve:
+    post:
+      summary: Manager/Admin approval gate applying live locked variance to ledger
+      parameters:
+        - { name: stockAdjustment, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200': { description: Adjustment approved and applied }
+
+  /reports/inventory:
+    get:
+      summary: Inventory valuation and stock health report
+      responses:
+        '200': { description: Valuation summary, category breakdown, and SKU table }
+
+  /reports/transactions:
+    get:
+      summary: Period transaction and movement audit report
+      responses:
+        '200': { description: Inbound/outbound totals and detailed ledger }
